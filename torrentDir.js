@@ -92,6 +92,11 @@ const search = (source, searchTerm, callback) => {
   else if(source == 'eztv'){
     searchShows(source, searchTerm, callback);
   }
+  else if(source == 'yify'){
+    YifyQuery(searchTerm, (error, result) => {
+      return callback(error, result);
+    });
+  }
 }
 
 const printTorrents = (source, torrents, maxItems) => {

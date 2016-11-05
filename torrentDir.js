@@ -53,7 +53,11 @@ const showTop = (source, categoryId, callback) => {
   }
 }
 
-const bytes = (num) => numeral(num).format('0.0b');
+const bytes = (num) => {
+  if (typeof(num) === 'string')
+    return num;
+  return numeral(num).format('0.0b');
+}
 
 
 const search = (source, searchTerm, callback) => {

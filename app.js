@@ -195,6 +195,7 @@ const ontorrent = (torrent) => {
       clivas.line('{yellow:info} {green:macflix is exiting...}');
       if (argv.remove) {
         clivas.line('{yellow:note} {green:macflix is going to remove temporary files..}');
+        rimraf(`${__dirname}/subtitle.srt`, (err) => {});
         rimraf(`${engine.path}`, (err) => {
           clivas.line('{yellow:note} {green:macflix removed the temporary files!}');
           process.exit();

@@ -5,7 +5,16 @@ const parseTorrent = require('parse-torrent');
 const PirateBay = require('thepiratebay');
 const YtsClient = require('yts-client');
 const ytsClient = new YtsClient();
+const eztv = require('eztv');
+const YifyQuery = require('yify-query');
 
+const searchShows = (source, searchTerm, callback) => {
+  eztv.getShows({ query: searchTerm }, (error, results) => {
+    console.log(error);
+    console.log(results);
+    callback(error, results);
+  });
+}
 
 const showCategories = (callback) => {
   PirateBay.getCategories()
@@ -37,6 +46,11 @@ const showTop = (source, categoryId, callback) => {
       }
     });
   }
+  else if(source == 'yify'){
+    YifyQuery('', (error, result) => {
+      return callback(error, result);
+    });
+  }
 }
 
 const bytes = (num) => numeral(num).format('0.0b');
@@ -45,7 +59,7 @@ const bytes = (num) => numeral(num).format('0.0b');
 const search = (source, searchTerm, callback) => {
   if(source == 'pirateBay'){
     const options = {
-      category: 'all',
+      category: 'video',
       filter: {
         verified: false    // default - false | Filter all VIP or trusted torrents
       },
@@ -75,6 +89,9 @@ const search = (source, searchTerm, callback) => {
       }
     });
   }
+  else if(source == 'eztv'){
+    searchShows(source, searchTerm, callback);
+  }
 }
 
 const printTorrents = (source, torrents, maxItems) => {
@@ -100,19 +117,35 @@ const printTorrents = (source, torrents, maxItems) => {
       if(!torrent.torrents){
         return true;
       }
+
       torrent.torrents.forEach((subTorrent) => {
+
         processedTorrents.push({
-          name:`${torrent.name} ${subTorrent.quality}`,
+          name:`${torrent.name}`,
           seeders: subTorrent.seeds,
           leechers: '-',
           size: subTorrent.size,
           magnetLink: subTorrent.url,
-          imdb: torrent.rating
+          imdb: torrent.rating,
+          res: subTorrent.quality,
+          year: torrent.year
         });
         total++
       });
 
     });
+  }
+  else if(source == 'yify'){
+
+    processedTorrents = [{
+      name: torrents.title_long,
+      size: torrents.size,
+      seeders: torrents.seeds,
+      leechers: torrents.peers,
+      res: torrents.quality,
+      magnetLink: torrents.magnet || torrents.url
+    }];
+
   }
   let index = 0;
   let t = new Table;
@@ -120,9 +153,11 @@ const printTorrents = (source, torrents, maxItems) => {
   processedTorrents.forEach((torrent) => {
     t.cell('Sel', String.fromCharCode(97+index));
     t.cell('Name', torrent.name);
-    t.cell('seeds', torrent.seeders);
-    t.cell('leechs', torrent.leechers);
-    t.cell('imdb', torrent.imdb);
+    if(torrent.year) t.cell('Year', torrent.year);
+    if(torrent.seeders) t.cell('seeds', torrent.seeders);
+    if(torrent.leechers) t.cell('leechs', torrent.leechers);
+    if(torrent.imdb) t.cell('imdb', torrent.imdb);
+    if(torrent.res) t.cell('quality', torrent.res);
     t.cell('Size', bytes(torrent.size));
     t.newRow();
     index++;

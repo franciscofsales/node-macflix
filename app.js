@@ -379,6 +379,7 @@ PirateBay.search(searchTerm, {
         total++
       })
       const startTorrent = (magnetLink) => {
+        clivas.line(`{green: starting download ...}`);
         parsetorrent.remote(magnetLink, (err, parsedtorrent) => {
           if (err) {
             console.error(err.message);
@@ -388,31 +389,38 @@ PirateBay.search(searchTerm, {
         });
       }
       const onSubtitleReady = (magnetL, subFile) => {
-        utils.downloadFile(subFile, __dirname+'/subtitle.srt.gz', (err) =>{
-          if(err) {
-            console.log(err);
-            rimraf(__dirname+'/subtitle.srt.gz', ()=>{});
-            startTorrent(magnetL);
-          }
-          else{
+        if(subFile){
+          clivas.line(`{green: dowloading first subtitle ...}`);
+          utils.downloadFile(subFile, __dirname+'/subtitle.srt.gz', (err) =>{
+            if(err) {
+              console.log(err);
+              rimraf(__dirname+'/subtitle.srt.gz', ()=>{});
+              startTorrent(magnetL);
+            }
+            else{
+              clivas.line(`{green: unzipping ...}`);
+              utils.unzip(__dirname+'/subtitle.srt.gz', __dirname+'/subtitle.srt', (err) => {
+                rimraf( __dirname+'/subtitle.srt.gz', () =>{});
+                if(err){
+                  rimraf( __dirname+'/subtitle.srt', () =>{});
+                  console.log(err);
+                  startTorrent(magnetL);
+                }
+                else{
+                  VLC_ARGS += ` --sub-file=${enc(__dirname+'/subtitle.srt')}`;
+                  startTorrent(magnetL);
+                }
 
-            utils.unzip(__dirname+'/subtitle.srt.gz', __dirname+'/subtitle.srt', (err) => {
-              rimraf( __dirname+'/subtitle.srt.gz', () =>{});
-              if(err){
-                rimraf( __dirname+'/subtitle.srt', () =>{});
-                console.log(err);
-                startTorrent(magnetL);
-              }
-              else{
-                VLC_ARGS += ` --sub-file=${enc(__dirname+'/subtitle.srt')}`;
-                startTorrent(magnetL);
-              }
+              });
 
-            });
-
-          }
-        });
+            }
+          });
+        }
+        else {
+          startTorrent(magnetL);
+        }
       }
+
       keypress(process.stdin);
       process.stdin.on('keypress', (ch, key) => {
         if (!key) return;
@@ -426,12 +434,20 @@ PirateBay.search(searchTerm, {
 
         if(key.name.charCodeAt(0) > 96 && key.name.charCodeAt(0) < 106+index){
           doneSetup = true;
-
+          clivas.clear();
+          clivas.line(`{green: Downloading}{bold: subtitle}...`);
           opensubtitles.api.login()
           .then((token) => {
             opensubtitles.api.searchForTitle(token, subTitleLang, torrents[key.name.charCodeAt(0)-97].name)
             .then((subtitles) => {
-               onSubtitleReady(torrents[key.name.charCodeAt(0)-97].magnetLink, subtitles[0].SubDownloadLink);
+               if(subtitles.length > 0) {
+                  clivas.line(`{bold: Found} {green: ${subtitles.length} subtitles}`);
+                  onSubtitleReady(torrents[key.name.charCodeAt(0)-97].magnetLink, subtitles[0].SubDownloadLink);
+               }
+               else{
+                  clivas.line(`{red: No subtitles Found}`);
+                  onSubtitleReady(torrents[key.name.charCodeAt(0)-97].magnetLink, null);
+               }
                opensubtitles.api.logout(token);
                return;
             });

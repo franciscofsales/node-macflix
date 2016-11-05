@@ -7,7 +7,7 @@ const numeral = require('numeral');
 const os = require('os');
 const address = require('network-address');
 const proc = require('child_process');
-const macflix = require('./');
+const macflix = require('../');
 const keypress = require('keypress');
 const openUrl = require('open');
 const inquirer = require('inquirer');
@@ -15,8 +15,8 @@ const parsetorrent = require('parse-torrent');
 const path = require('path');
 const rimraf = require('rimraf');
 const opensubtitles = require("subtitler");
-const utils = require('./utils');
-const TorrentService = require('./torrentDir');
+const utils = require('../utils');
+const TorrentService = require('../torrentDir');
 
 process.title = 'macflix';
 const validSources = [
@@ -49,7 +49,7 @@ const argv = rc('macflix', {}, yargs
   .argv);
 
 if (argv.version) {
-  console.error(require('./package').version);
+  console.error(require('../package').version);
   process.exit(0);
 }
 

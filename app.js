@@ -25,14 +25,13 @@ const argv = rc('macflix', {}, optimist
   .alias('c', 'connections').describe('c', 'max connected peers').default('c', os.cpus().length > 1 ? 100 : 30)
   .alias('p', 'port').describe('p', 'change the http port').default('p', 8888)
   .alias('i', 'index').describe('i', 'changed streamed file (index)')
-  .alias('l', 'list').describe('l', 'list available files with corresponding index').boolean('l')
+  .alias('l', 'language').describe('l', 'language for subtitles (eng, por)').default('l', 'eng')
   .alias('t', 'subtitles').describe('t', 'load subtitles file')
   .alias('q', 'quiet').describe('q', 'be quiet').boolean('v')
   .alias('v', 'vlc').describe('v', 'autoplay in vlc*').boolean('v')
   .alias('s', 'airplay').describe('s', 'autoplay via AirPlay').boolean('a')
   .alias('f', 'path').describe('f', 'change buffer file path')
   .alias('b', 'blocklist').describe('b', 'use the specified blocklist')
-  .alias('n', 'no-quit').describe('n', 'do not quit macflix on vlc exit').boolean('n')
   .alias('a', 'all').describe('a', 'select all files in the torrent').boolean('a')
   .alias('h', 'hostname').describe('h', 'host name or IP to bind the server to')
   .alias('e', 'peer').describe('e', 'add peer by ip:port')
@@ -69,6 +68,8 @@ const enc = (s) => {
   return /\s/.test(s) ? JSON.stringify(s) : s;
 }
 
+let subTitleLang = argv.l ? enc(argv.l) : 'eng';
+
 if (argv.t) {
   VLC_ARGS += ` --sub-file=${enc(argv.t)}`;
 }
@@ -104,44 +105,6 @@ const ontorrent = (torrent) => {
   });
 
   const bytes = (num) => numeral(num).format('0.0b');
-
-
-  if (argv.list) {
-    let interactive = process.stdout.isTTY && process.stdin.isTTY && !!process.stdin.setRawMode;
-
-    const onready = () => {
-      if (interactive) {
-        inquirer.prompt([{
-          type: 'list',
-          name: 'file',
-          message: 'Choose one file',
-          choices: engine.files.map( (file, i) => {
-            return {
-              name: file.name + ' : ' + bytes(file.length),
-              value: i
-            } })
-        }],
-        (answers) => {
-          argv.index = answers.file;
-          delete argv.list;
-          ontorrent(torrent);
-        });
-      }
-      else {
-        engine.files.forEach((file, i, files) => {
-          clivas.line(`{3+bold:${i}} : {magenta:${file.name}} : {blue:${bytes(file.length)}}`);
-        });
-        process.exit(0);
-      }
-    }
-    if (engine.torrent) {
-      onready();
-    }
-    else {
-      engine.on('ready', onready);
-    }
-    return;
-  }
 
   engine.on('hotswap', () => {
     hotswaps++;
@@ -219,9 +182,7 @@ const ontorrent = (torrent) => {
       });
 
       vlc.on('exit', () => {
-        if (!argv.n && argv.quit !== false) {
-          remove();
-        }
+        remove();
       });
     }
 
@@ -468,7 +429,7 @@ PirateBay.search(searchTerm, {
 
           opensubtitles.api.login()
           .then((token) => {
-            opensubtitles.api.searchForTitle(token, 'por', torrents[key.name.charCodeAt(0)-97].name)
+            opensubtitles.api.searchForTitle(token, subTitleLang, torrents[key.name.charCodeAt(0)-97].name)
             .then((subtitles) => {
                onSubtitleReady(torrents[key.name.charCodeAt(0)-97].magnetLink, subtitles[0].SubDownloadLink);
                opensubtitles.api.logout(token);

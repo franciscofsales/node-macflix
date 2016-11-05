@@ -86,6 +86,14 @@ const unzip = (filepath, destination, callback) => {
 
 }
 
+const RemoveLastDirectoryPart = (path) => {
+    let the_arr = path.split('/');
+    the_arr.pop();
+    return( the_arr.join('/') );
+};
+
+
 module.exports.parseBlocklist = parseBlocklist;
 module.exports.downloadFile = downloadFile;
 module.exports.unzip = unzip;
+module.exports.removeLastDirectoryPart = RemoveLastDirectoryPart;

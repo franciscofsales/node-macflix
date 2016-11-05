@@ -180,10 +180,6 @@ const macflix = (torrent, opts) => {
 
   let engine = torrentStream(torrent, xtend(opts, {port: opts.peerPort}));
 
-  // Just want torrent-stream to list files.
-  if (opts.list) {
-    return engine;
-  }
 
   // Pause/Resume downloading as needed
   engine.on('uninterested', () => {

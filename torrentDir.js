@@ -1,8 +1,11 @@
 const clivas = require('clivas');
+const numeral = require('numeral');
+const Table = require('easy-table');
 const parseTorrent = require('parse-torrent');
 const PirateBay = require('thepiratebay');
 const YtsClient = require('yts-client');
 const ytsClient = new YtsClient();
+
 
 const showCategories = (callback) => {
   PirateBay.getCategories()
@@ -16,7 +19,28 @@ const showTop = (source, categoryId, callback) => {
       .then(results => callback(null, results))
       .catch(err => callback(err, null));
   }
+  else if(source == 'yts'){
+    const selector = {
+      pageIndex: 0, // [1, 50]
+      pageSize: 12 ,
+      rating_min: 5, // [0, 9]
+      term: '', // match with name, actorm director
+      sort_by: 'seeders',
+      order_by: 'desc', // desc, asc
+    };
+    ytsClient.find(selector, (error, items) => {
+      if(error){
+        return callback(error, null);
+      }
+      else{
+        return callback(null, items);
+      }
+    });
+  }
 }
+
+const bytes = (num) => numeral(num).format('0.0b');
+
 
 const search = (source, searchTerm, callback) => {
   if(source == 'pirateBay'){
@@ -37,7 +61,6 @@ const search = (source, searchTerm, callback) => {
     const selector = {
       pageIndex: 0, // [1, 50]
       pageSize: 10 ,
-      // quality: '1080p', // 720p, 1080p, 3D
       rating_min: 0, // [0, 9]
       term: searchTerm, // match with name, actorm director
       sort_by: 'seeders',
@@ -92,10 +115,20 @@ const printTorrents = (source, torrents, maxItems) => {
     });
   }
   let index = 0;
+  let t = new Table;
+
   processedTorrents.forEach((torrent) => {
-    clivas.line(`{bold:${String.fromCharCode(97+index)}}:   {green:${torrent.name}}      {green:${torrent.seeders}}/{red:${torrent.leechers}}     imdb: {yellow:${torrent.imdb}}    {bold:${torrent.size}}`);
+    t.cell('Sel', String.fromCharCode(97+index));
+    t.cell('Name', torrent.name);
+    t.cell('seeds', torrent.seeders);
+    t.cell('leechs', torrent.leechers);
+    t.cell('imdb', torrent.imdb);
+    t.cell('Size', bytes(torrent.size));
+    t.newRow();
     index++;
   })
+
+  clivas.write(t.toString());
   return processedTorrents;
 
 };

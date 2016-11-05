@@ -374,7 +374,7 @@ if(searchTerm == 'browse'){
       process.exit(0);
       return true;
     }
-    selectSource(torrents, 30);
+    selectSource(torrents, 25);
   });
 }
 else{

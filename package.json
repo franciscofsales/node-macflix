@@ -1,6 +1,6 @@
 {
   "name": "macflix",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "description": "Torrent streaming client with magnet capturing",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -20,8 +20,10 @@
     "type": "git",
     "url": "git://github.com/franciscofsales/node-macflix.git"
   },
-  "main": "lib/index.js",
-  "bin": "lib/bin/app.js",
+  "main": "index.js",
+  "bin": {
+    "macflix": "./lib/bin/app.js"
+  },
   "dependencies": {
     "airplayer": "^2.0.0",
     "bluebird": "^3.4.6",

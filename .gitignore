@@ -1,4 +1,6 @@
 node_modules
 node_modules/
+bin/subtitles/
+bin/subtitles
 subtitle.srt
 subtitle.srt.gz

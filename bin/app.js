@@ -19,6 +19,7 @@ const Promise = require('bluebird');
 const utils = require('../utils');
 const TorrentService = require('../torrentDir');
 
+
 process.title = 'macflix';
 const validSources = [
   'pirateBay',
@@ -57,6 +58,7 @@ if (argv.version) {
 const searchTerm = argv._[0];
 const onTop = !argv.d;
 const torrentSource = argv.s || 'pirateBay';
+let downloadedSubtitles = [];
 
 
 if(validSources.indexOf(torrentSource) < 0){
@@ -80,7 +82,8 @@ if (!searchTerm) {
   process.exit(1);
 }
 
-let VLC_ARGS = `-q${(onTop ? '' : ' --video-on-top')} --play-and-exit`;
+let VLC_ARGS = `-q${(onTop ? '' : ' --video-on-top')} --play-and-exit `;
+let SUB_ARGS = '';
 
 const enc = (s) => {
   return /\s/.test(s) ? JSON.stringify(s) : s;
@@ -89,7 +92,8 @@ const enc = (s) => {
 let subTitleLang = argv.l ? enc(argv.l) : 'eng';
 
 if (argv.t) {
-  VLC_ARGS += ` --sub-file=${enc(argv.t)}`;
+  VLC_ARGS += ` --sub-file=0${enc(argv.t)}`;
+
 }
 else if (subTitleFile){
   VLC_ARGS += ` --sub-file=${enc(subTitleFile)}`;
@@ -176,7 +180,7 @@ const ontorrent = (torrent) => {
       clivas.line('{yellow:info} {green:macflix is exiting...}');
       if (argv.remove) {
         clivas.line('{yellow:note} {green:macflix is going to remove temporary files..}');
-        rimraf(`${__dirname}/subtitle.srt`, (err) => {});
+        rimraf(`${__dirname}/*.srt`, (err) => {});
         rimraf(`${utils.removeLastDirectoryPart(engine.path)}/*`, (err) => {
           if(err){
             clivas.line('{yellow:error} {green:macflix failed to remove the temporary files!}');
@@ -198,6 +202,7 @@ const ontorrent = (torrent) => {
       player = 'vlc';
       const root = '/Applications/VLC.app/Contents/MacOS/VLC';
       const home = (process.env.HOME || '') + root;
+      console.log(`vlc ${VLC_ARGS} ${localHref} || ${root} ${VLC_ARGS} ${localHref} || ${home} ${VLC_ARGS} ${localHref}`);
       let vlc = proc.exec(`vlc ${VLC_ARGS} ${localHref} || ${root} ${VLC_ARGS} ${localHref} || ${home} ${VLC_ARGS} ${localHref}`, (error, stdout, stderror) => {
         if (error) {
           remove();
@@ -380,29 +385,32 @@ const startTorrent = (magnetLink) => {
   });
 }
 
-const onSubtitleReady = (magnetL, subFile) => {
+const onSubtitleReady = (subFile) => {
   let prom = new Promise((resolve, reject) =>{
-
     if(subFile){
-      clivas.line(`{green: dowloading first subtitle ...}`);
-      utils.downloadFile(subFile, __dirname+'/subtitle.srt.gz', (err) =>{
+      const subFileId = subFile.IDSubtitleFile;
+      clivas.line(`{green: dowloading subtitle ...}`);
+      utils.downloadFile(subFile.SubDownloadLink, `${__dirname}/subtitle_${subFileId}.srt.gz`, (err) =>{
         if(err) {
           console.log(err);
-          rimraf(__dirname+'/subtitle.srt.gz', ()=>{});
-          startTorrent(magnetL);
+          rimraf(`${__dirname}/subtitle_${subFileId}.srt.gz`, ()=>{});
+          resolve(null);
         }
         else{
           clivas.line(`{green: unzipping ...}`);
-          utils.unzip(__dirname+'/subtitle.srt.gz', __dirname+'/subtitle.srt', (err) => {
-            rimraf( __dirname+'/subtitle.srt.gz', () =>{});
+          utils.unzip(`${__dirname}/subtitle_${subFileId}.srt.gz`, `${__dirname}/subtitle_${subFileId}.srt`, (err) => {
+            rimraf(`${__dirname}/subtitle_${subFileId}.srt.gz`, () =>{});
             if(err){
-              rimraf( __dirname+'/subtitle.srt', () =>{});
+              rimraf( `${__dirname}/subtitle_${subFileId}.srt`, () =>{});
               console.log(err);
-              startTorrent(magnetL);
+              resolve(null);
             }
             else{
-              VLC_ARGS += ` --sub-file=${enc(__dirname+'/subtitle.srt')}`;
-              startTorrent(magnetL);
+              if(downloadedSubtitles.length == 0) {
+                VLC_ARGS += ` --sub-file=${enc(`${__dirname}/subtitle_${subFileId}.srt`)}`;
+              }
+              downloadedSubtitles.push(`${__dirname}/subtitle_${subFileId}.srt`);
+              resolve(null);
             }
 
           });
@@ -410,9 +418,8 @@ const onSubtitleReady = (magnetL, subFile) => {
         }
       });
     }
-
     else {
-      startTorrent(magnetL);
+      resolve(null);
     }
   });
   return prom;
@@ -421,7 +428,7 @@ const onSubtitleReady = (magnetL, subFile) => {
 const downloadSubtitles = (torrent) => {
   let prom = new Promise((resolve, reject) =>{
 
-    clivas.line(`{green: Downloading}{bold: subtitle}...`);
+    clivas.line(`{green: Searching}{bold: subtitles}...`);
 
     opensubtitles.api.login()
     .then((token) => {
@@ -429,16 +436,20 @@ const downloadSubtitles = (torrent) => {
       .then((subtitles) => {
          if(subtitles.length > 0) {
             clivas.line(`{bold: Found} {green: ${subtitles.length} subtitles}`);
-            resolve(subtitles[0].SubDownloadLink);
-            onSubtitleReady(torrent.magnetLink, subtitles[0].SubDownloadLink);
+            resolve(subtitles);
          }
          else{
             clivas.line(`{red: No subtitles Found}`);
-            onSubtitleReady(torrent.magnetLink, null);
+            resolve(null);
          }
          opensubtitles.api.logout(token);
-         return;
+      })
+      .catch((err)=>{
+        clivas.line('{red: ERROR}{bold: could not search on OpenSubtitles. Please try again..}');
       });
+    })
+    .catch((err)=>{
+      clivas.line('{red: ERROR}{bold: could not authenticate with OpenSubtitles. Please try again..}');
     });
   });
   return prom;
@@ -477,8 +488,23 @@ const selectSource = (torrents, maxItems) => {
   clivas.clear();
   clivas.line(`{green:Select source:}`);
   const processedTorrents = TorrentService.printTorrents(torrentSource, torrents, maxItems);
+
   if(processedTorrents.length == 1) {
-    downloadSubtitles(processedTorrents[0]);
+    let subtitlesDownProm = [];
+    downloadSubtitles(processedTorrents[0]).then((subtitles) => {
+      if(subtitles){
+        subtitles.forEach((subtitle) => {
+          subtitlesDownProm.push(onSubtitleReady(subtitle));
+        });
+        Promise.all(subtitlesDownProm).then(() => {
+          startTorrent(processedTorrents[0].magnetLink);
+        });
+      }
+      else {
+        startTorrent(processedTorrents[0].magnetLink);
+      }
+    });
+
   }
 
   keypress(process.stdin);
@@ -496,7 +522,20 @@ const selectSource = (torrents, maxItems) => {
       doneSetup = true;
       clivas.clear();
 
-      downloadSubtitles(processedTorrents[key.name.charCodeAt(0)-97]);
+      let subtitlesDownProm = [];
+      downloadSubtitles(processedTorrents[key.name.charCodeAt(0)-97]).then((subtitles) => {
+        if(subtitles){
+          subtitles.forEach((subtitle) => {
+            subtitlesDownProm.push(onSubtitleReady(subtitle));
+          });
+          Promise.all(subtitlesDownProm).then(() => {
+            startTorrent(processedTorrents[key.name.charCodeAt(0)-97].magnetLink);
+          });
+        }
+        else {
+          startTorrent(processedTorrents[key.name.charCodeAt(0)-97].magnetLink);
+        }
+      });
 
     }
 

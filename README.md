@@ -1,6 +1,8 @@
 # Macflix
 
-Torrent streaming client for node.js with torrent searching
+Video torrent streaming client for node.js with torrent searching
+
+Uses [VLC](http://www.videolan.org/vlc/index.html) for video reproduction
 
 ```
 npm install -g macflix

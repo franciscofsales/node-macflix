@@ -34,7 +34,6 @@ const argv = rc('macflix', {}, yargs
   .alias('p', 'port').describe('p', 'change the http port').default('p', 8888)
   .alias('i', 'index').describe('i', 'changed streamed file (index)')
   .alias('l', 'language').describe('l', 'language for subtitles (eng, por)').default('l', 'eng')
-  .alias('t', 'subtitles').describe('t', 'load subtitles file')
   .alias('q', 'quiet').describe('q', 'be quiet').boolean('q')
   .alias('v', 'airplay').describe('v', 'autoplay via AirPlay').boolean('v')
   .alias('f', 'path').describe('f', 'change buffer file path')
@@ -76,28 +75,19 @@ if (!searchTerm) {
   yargs.showHelp();
   console.error('Options passed after -- will be passed to your player');
   console.error('');
-  console.error('  "macflix <movie/series> --vlc -- --fullscreen" will pass --fullscreen to vlc');
+  console.error('  "macflix <movie/series/"browse">" ');
   console.error('');
   console.error('* Autoplay can take several seconds to start since it needs to wait for the first piece');
   process.exit(1);
 }
 
-let VLC_ARGS = `-q${(onTop ? '' : ' --video-on-top')} --play-and-exit `;
-let SUB_ARGS = '';
+let VLC_ARGS = `-q${(onTop ? '' : ' --video-on-top')} --play-and-exit --sub-autodetect-fuzzy=1 --sub-autodetect-path=${__dirname} `;
 
 const enc = (s) => {
   return /\s/.test(s) ? JSON.stringify(s) : s;
 }
 
 let subTitleLang = argv.l ? enc(argv.l) : 'eng';
-
-if (argv.t) {
-  VLC_ARGS += ` --sub-file=0${enc(argv.t)}`;
-
-}
-else if (subTitleFile){
-  VLC_ARGS += ` --sub-file=${enc(subTitleFile)}`;
-}
 
 if (argv._.length > 1) {
   var _args = argv._;
@@ -202,7 +192,7 @@ const ontorrent = (torrent) => {
       player = 'vlc';
       const root = '/Applications/VLC.app/Contents/MacOS/VLC';
       const home = (process.env.HOME || '') + root;
-      console.log(`vlc ${VLC_ARGS} ${localHref} || ${root} ${VLC_ARGS} ${localHref} || ${home} ${VLC_ARGS} ${localHref}`);
+
       let vlc = proc.exec(`vlc ${VLC_ARGS} ${localHref} || ${root} ${VLC_ARGS} ${localHref} || ${home} ${VLC_ARGS} ${localHref}`, (error, stdout, stderror) => {
         if (error) {
           remove();
@@ -231,58 +221,6 @@ const ontorrent = (torrent) => {
 
     process.stdout.write(new Buffer('G1tIG1sySg==', 'base64')); // clear for drawing
 
-    let interactive = !player && process.stdin.isTTY && !!process.stdin.setRawMode;
-
-    if (interactive) {
-      keypress(process.stdin);
-      process.stdin.on('keypress', (ch, key) => {
-        if (!key) return;
-        if (key.name === 'c' && key.ctrl === true) {
-          return process.kill(process.pid, 'SIGINT');
-        }
-        if (key.name === 'l' && key.ctrl === true) {
-          var command = 'open';
-          return proc.exec(`${command} ${engine.path}`);
-        }
-        if (key.name !== 'space') {
-          return;
-        }
-
-        if (player) {
-          return;
-        }
-
-        if (paused === false) {
-          if (!argv.all) {
-            engine.server.index.deselect();
-          }
-          else {
-            engine.files.forEach((file) => {
-              file.deselect();
-            });
-          }
-          paused = true;
-          pausedAt = Date.now();
-          draw();
-          return;
-        }
-
-        if (!argv.all) {
-          engine.server.index.select();
-        }
-        else {
-          engine.files.forEach( (file) => {
-            file.select();
-          });
-        }
-
-        paused = false;
-        timePaused += Date.now() - pausedAt;
-        draw();
-      })
-      process.stdin.setRawMode(true);
-    }
-
     const draw = () => {
       const unchoked = engine.swarm.wires.filter(active);
       let timeCurrentPause = 0;
@@ -308,16 +246,6 @@ const ontorrent = (torrent) => {
       clivas.line(`{yellow:->} {green:verified} {bold:${verified}} {green:pieces and received} {bold:${invalid}} {green:invalid pieces}`);
       clivas.line(`{yellow:->} {green:peer queue size is} {bold:${swarm.queued}}`);
       clivas.line('{80:}');
-
-      if (interactive) {
-        var openLoc = ' or CTRL+L to open download location}';
-        if (paused) {
-          clivas.line(`{yellow:PAUSED} {green:Press SPACE to continue download${openLoc}`);
-        }
-        else {
-          clivas.line(`{50+green:Press SPACE to pause download${openLoc}`);
-        }
-      }
 
       clivas.line('');
       linesremaining -= 9;
@@ -406,8 +334,8 @@ const onSubtitleReady = (subFile) => {
               resolve(null);
             }
             else{
-              if(downloadedSubtitles.length == 0) {
-                VLC_ARGS += ` --sub-file=${enc(`${__dirname}/subtitle_${subFileId}.srt`)}`;
+              if(downloadedSubtitles.length == 0 ) {
+                  VLC_ARGS += ` --sub-file=${enc(`${__dirname}/subtitle_${subFileId}.srt`)}`;
               }
               downloadedSubtitles.push(`${__dirname}/subtitle_${subFileId}.srt`);
               resolve(null);

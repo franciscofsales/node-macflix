@@ -33,6 +33,8 @@ macflix will print the options available.
 ## Main Options
 
 Main set of options. To see the complete set of options type `macflix` on your terminal.
+
+
 | Option  | Description |
 |---|---|
 |**`-l`**|Subtitle language (`eng`, `por`, ...). _Default `English`_|

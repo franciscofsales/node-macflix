@@ -51,6 +51,9 @@ Inspired by the following work:
 
 [torrent-stream](https://github.com/mafintosh/torrent-stream)
 
+The content is not provided by this software nor responsibility of the author.
+Any violation is full responsibility of the user and/or content providers.
+
 ## License
 
 [MIT](https://raw.githubusercontent.com/franciscofsales/node-macflix/master/LICENSE)

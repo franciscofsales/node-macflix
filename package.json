@@ -1,6 +1,6 @@
 {
   "name": "macflix",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Torrent streaming client with magnet capturing",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

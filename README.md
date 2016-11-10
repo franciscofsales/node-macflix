@@ -26,7 +26,7 @@ macflix <search term> [options]
 
 Use `"` around your search term so it can contain spaces or special characters
 
-macflix will print the options available.
+macflix will print a list the results, if any available.
 
 
 

@@ -5,6 +5,12 @@ Video torrent streaming client for node.js with torrent searching
 Uses [VLC](http://www.videolan.org/vlc/index.html) for video reproduction
 
 ```
+yarn global add macflix
+```
+
+or
+
+```
 npm install -g macflix
 ```
 
